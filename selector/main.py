@@ -43,6 +43,10 @@ def changes_for(text: str, root: Path) -> list[classify.Change]:
             except diff.PatchError:
                 new_text = None
         changes.append(classify.classify(file_patch, old_text, new_text))
+        if file_patch.old_path and file_patch.new_path and file_patch.old_path != file_patch.new_path:
+            # A rename is also the disappearance of the old module.
+            gone = diff.FilePatch(old_path=file_patch.old_path, new_path=None)
+            changes.append(classify.classify(gone, old_text, None))
     return changes
 
 

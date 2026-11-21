@@ -124,7 +124,11 @@ def change_bits(change: Change, maps: Maps, wide_imports: bool = False) -> int:
 
     if kind == "py_test":
         if change.deleted_file:
-            return maps.rev_users.get(path, 0) or maps.full
+            return maps.rev_users.get(path, 0)
+        if change.new_file:
+            # Nothing in tests.json lives in a file that did not exist; only the
+            # test modules that import it can break.
+            return maps.rev_users.get(path, 0)
         if change.module_level:
             # A test module's module-level code is imported by other test
             # files (tests.dialects.test_dialect.Validator is the big one).
