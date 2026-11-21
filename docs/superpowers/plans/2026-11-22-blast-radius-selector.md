@@ -179,7 +179,27 @@ Policy per commit (all costs in seconds):
 4. **Unseen change kinds** — new/deleted/renamed files, binary, test-file edits, conftest, packaging files. Fallback must be conservative (`ALL` or `pack(C)`), never empty. Covered by Task 7 mutants.
 5. **Resource limits** — 64 MB `/tmp` (delete overlays), 256 pids (≤ 2 concurrent children, no xdist at runtime), read-only FS (no pyc writes), 180 s wall (deadline fallback). Check with `eval_local.py` wall-time output and the Docker run.
 
-## Notes (fill in while executing)
+## Notes (decisions taken while executing)
 
-- Child startup CPU: _
-- Best local totals (sample / validation): _
+- **No tests run at run time.** Running a candidate costs about its recorded seconds of CPU,
+  while selecting it costs at most that (spread over workers) and often just the 2 s worker
+  fee. Arithmetic on the sample: for a 1-test candidate set, running costs 0.02 + ~0.3 s
+  startup = 0.32 s and saves 2.01 s only when the test passes; with 40% of commits breaking
+  nothing the two expectations nearly cancel, and for every wider set running loses outright
+  (sum of candidates >> max load). The image therefore ships a precomputed map and no pytest.
+- **Map building runs `tests/inline_mp`**: sqlglot's optimizer/executor tests submit work to
+  `spawn` workers; `sys.monitoring` in the parent cannot see those lines, so the map run
+  replaces `ProcessPoolExecutor` with an inline executor. This is a map-building-only patch:
+  it changes no shipped behaviour.
+- **Fixtures**: `maps.fixtures` maps a module stem (`tsql`, `simplify`, ...) to the tests that
+  open a fixture mentioning it, which is what catches a dialect flag change breaking a
+  fixture-driven optimizer test.
+- Best local totals: sample 1 749.6 s with 5 misses before the inline-pool fix (see below).
+
+## Progress log
+
+- Maps: `maps/maps.pkl.gz` (0.8 MB, 1621 ids incl. the skipped one, all 1620 tests.json ids present).
+- Unit tests: `tests/test_diff.py`, `tests/test_classify.py`, `tests/test_pack.py` pass.
+- Local harness: `python -m tools.eval_local` (CPU from `getrusage(CHILDREN)`, score from `kit/score.py`).
+- Validation corpus: `python -m tools.mutants --n 96`, labelled by `python -m tools.label -n 6`
+  under `validation/` (gitignored).
