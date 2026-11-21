@@ -27,7 +27,7 @@
 
 ## Known facts (verified 2026-11-22)
 
-- Local machine: Windows + WSL Ubuntu (`wsl -d Ubuntu`), conda at `~/miniforge3`, Python 3.14 default, Docker Desktop installed on Windows via winget (enable WSL integration in Docker Desktop settings to use `docker` inside WSL), `make` only inside WSL conda env. sqlglot clone at `~/blast/sqlglot` (WSL), checked out at the pinned commit. sqlglot/ = 3.5 MB, 184 .py files; tests/ = 8.8 MB.
+- Local machine: Windows + WSL Ubuntu (`wsl -d Ubuntu`), conda at `~/miniforge3`, Python 3.14 default. Docker Desktop 29.9.3 installed with WSL integration for Ubuntu enabled; `docker` and `make` work inside WSL (start Docker Desktop first if `docker info` fails). Verified: `wsl -d Ubuntu -- bash -lc "cd /mnt/c/Users/malvi/Desktop/Buildathon/kit && make sample"` builds the starter and scores `Simulated: 1210.470 s, Misses: 0` (CPU not measured locally). sqlglot clone at `~/blast/sqlglot` (WSL), checked out at the pinned commit. sqlglot/ = 3.5 MB, 184 .py files; tests/ = 8.8 MB.
 - Repo: git root `C:/Users/malvi/Desktop/Buildathon`, branch `main`, public remote https://github.com/SuperSniper341/blast-radius (`gh` CLI logged in as SuperSniper341). `.gitattributes` forces LF (patches/maps must be byte-exact).
 - Kit unpacked at `C:/Users/malvi/Desktop/Buildathon/kit/` (Dockerfile, Makefile, score.py, selector.py, requirements.lock, sample/{commits,answers.json,tests.json}).
 - tests.json: 1620 tests, 103.0 s total. Heavy tests: #1490 `test_parser::test_max_nodes` 28.8 s, #1106 `test_executor::test_execute_tpcds` 21.5 s, #1224 `test_generator::test_generator_memory` 6.7 s, #1107 tpch 3.9 s, #1123 optimized_tpch 3.5 s, then optimizer fixture tests 1–2.5 s.
