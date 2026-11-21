@@ -31,6 +31,7 @@ def main() -> int:
     ap.add_argument("--answers", default="kit/sample/answers.json")
     ap.add_argument("--checkout", default=os.path.expanduser("~/blast/sqlglot"))
     ap.add_argument("--maps", default=str(REPO / "maps" / "maps.pkl.gz"))
+    ap.add_argument("--tests-file", default="")
     ap.add_argument("--out", default=str(REPO / "output.jsonl"))
     ap.add_argument("--env", action="append", default=[])
     args = ap.parse_args()
@@ -62,7 +63,8 @@ def main() -> int:
     cpu = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
 
     Path(args.out).write_bytes(proc.stdout)
-    tests = json.loads((data / "tests.json").read_text())["tests"]
+    tests_path = Path(args.tests_file) if args.tests_file else data / "tests.json"
+    tests = json.loads(tests_path.read_text())["tests"]
     answers = json.loads(Path(args.answers).read_text())["commits"]
     scorer = load_scorer()
     result = scorer.evaluate_run(proc.stdout, tests, answers)

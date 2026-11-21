@@ -57,6 +57,7 @@ class Change:
     changed_lines: set[int] = field(default_factory=set)
     names: set[str] = field(default_factory=set)
     span: tuple[int, int] | None = None
+    syntax_error: bool = False
     new_file: bool = False
     deleted_file: bool = False
     text: str | None = None
@@ -99,19 +100,34 @@ def token_equivalent(old: str | None, new: str | None) -> bool:
     return a == b
 
 
-def _function_body_lines(source: str) -> set[int] | None:
-    """Line numbers strictly inside a function body (not decorators/signature)."""
+def _function_body_lines(source: str) -> tuple[set[int], dict[int, int]] | None:
+    """Lines strictly inside a function body (not decorators/signature).
+
+    Also returns lambda header lines (line -> column of the earliest lambda
+    starting there): the text before the lambda on that line runs at definition
+    time, so editing it is not a function-body edit.
+    """
     try:
         tree = ast.parse(source)
     except SyntaxError:
         return None
     inside: set[int] = set()
+    heads: dict[int, int] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Lambda):
+            # A body line shared with the lambda header also holds whatever
+            # precedes the lambda (a dict key, an assignment target), which runs
+            # at definition time. classify() admits it only when that prefix is
+            # unchanged.
             body = node.body
             first = getattr(body, "lineno", node.lineno)
             last = getattr(body, "end_lineno", None) or first
-            inside.update(range(first, last + 1))
+            inside.update(range(first + 1, last + 1))
+            if first == node.lineno:
+                prev = heads.get(first)
+                heads[first] = node.col_offset if prev is None else min(prev, node.col_offset)
+            else:
+                inside.add(first)
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             body = node.body
             if body:
@@ -122,7 +138,24 @@ def _function_body_lines(source: str) -> set[int] | None:
                 ]
                 last = max(ends)
                 inside.update(range(first, last + 1))
-    return inside
+    return inside, heads
+
+
+def _removed_and_added(fp: FilePatch) -> tuple[set[int], list[str]]:
+    removed: set[int] = set()
+    added: list[str] = []
+    for hunk in fp.hunks:
+        lineno = hunk.old_start
+        for body in hunk.lines:
+            tag = body[:1]
+            if tag == " ":
+                lineno += 1
+            elif tag == "-":
+                removed.add(lineno)
+                lineno += 1
+            elif tag == "+":
+                added.append(body[1:])
+    return removed, added
 
 
 _ASSIGN_RE = re.compile(r'^\s*([A-Za-z_]\w*)\s*[:=]')
@@ -203,6 +236,12 @@ def classify(fp: FilePatch, old_text: str | None, new_text: str | None) -> Chang
         text=new_text,
     )
 
+    if fp.mode_only and not fp.hunks:
+        change.token_changed = False
+        change.module_level = False
+        change.changed_lines = set()
+        return change
+
     if fp.is_binary or (not fp.hunks and not (fp.is_new or fp.is_deleted)):
         # Nothing we can read: assume it changes behaviour.
         change.token_changed = True
@@ -213,14 +252,17 @@ def classify(fp: FilePatch, old_text: str | None, new_text: str | None) -> Chang
         change.module_level = True
         return change
 
-    if fp.mode_only and not fp.hunks:
-        change.token_changed = False
-        change.module_level = False
-        change.changed_lines = set()
-        return change
-
     if not path.endswith(".py"):
         return change
+
+    if new_text is not None and not fp.is_deleted:
+        try:
+            compile(new_text, path, "exec", dont_inherit=True)
+        except (SyntaxError, ValueError):
+            # The module no longer imports: everything that imports it fails.
+            change.syntax_error = True
+            change.module_level = True
+            return change
 
     if not fp.is_new and not fp.is_deleted and token_equivalent(old_text, new_text):
         change.token_changed = False
@@ -231,11 +273,26 @@ def classify(fp: FilePatch, old_text: str | None, new_text: str | None) -> Chang
         change.module_level = True
         return change
 
-    inside = _function_body_lines(old_text)
-    if inside is None:
+    parsed = _function_body_lines(old_text)
+    if parsed is None:
         change.module_level = True
         return change
-    change.module_level = any(line not in inside for line in change.changed_lines)
+    inside, heads = parsed
+    removed, added = _removed_and_added(fp)
+    source_lines = old_text.splitlines()
+
+    def in_body(line: int) -> bool:
+        if line in inside:
+            return True
+        col = heads.get(line)
+        if col is None:
+            return False
+        if line not in removed:
+            return True
+        prefix = source_lines[line - 1][:col] if line <= len(source_lines) else None
+        return prefix is not None and any(text.startswith(prefix) for text in added)
+
+    change.module_level = not all(in_body(line) for line in change.changed_lines)
     if not change.module_level:
         change.span = _enclosing_span(old_text, change.changed_lines)
     if change.module_level:

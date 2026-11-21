@@ -34,6 +34,13 @@ class Recorder:
         self.fid: dict[str, int] = {}
         self.per_test: dict[str, array] = {}
         self.opens: dict[str, list[str]] = {}
+        # Lines first hit in a test's setup/teardown phase: class fixtures
+        # (setUpClass, tearDownClass) run there, only for the class's first/last
+        # test, so the map builder spreads these over the whole class.
+        self.fixture_lines: dict[str, array] = {}
+        # Lines and opens hit while importing a test module during collection.
+        self.collect_lines: dict[str, array] = {}
+        self.collect_opens: dict[str, list[str]] = {}
         self.cur: set[int] | None = None
         self.cur_opens: set[str] | None = None
         self.cur_node: str | None = None
@@ -122,6 +129,60 @@ class Recorder:
         self.cur_opens = None
         self.cur_node = None
 
+    def start_collect(self):
+        self.cur = set()
+        self.cur_opens = set()
+        sys.monitoring.restart_events()
+
+    def stop_collect(self, rel: str):
+        if self.cur:
+            self.collect_lines[rel] = array("q", sorted(self.cur))
+        if self.cur_opens:
+            self.collect_opens[rel] = sorted(self.cur_opens)
+        self.cur = None
+        self.cur_opens = None
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_make_collect_report(collector):
+    rec = _recorder
+    if rec is None or not isinstance(collector, pytest.Module) or rec.cur_node is not None:
+        yield
+        return
+    rel = rec.rel(str(collector.path))
+    rec.start_collect()
+    try:
+        yield
+    finally:
+        rec.stop_collect(rel or str(collector.path))
+
+
+def _fixture_phase(item):
+    rec = _recorder
+    if rec is None or rec.cur is None:
+        yield
+        return
+    before = set(rec.cur)
+    try:
+        yield
+    finally:
+        if rec.cur is not None:
+            new = rec.cur - before
+            if new:
+                old = rec.fixture_lines.get(item.nodeid)
+                merged = new | set(old) if old is not None else new
+                rec.fixture_lines[item.nodeid] = array("q", sorted(merged))
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_setup(item):
+    yield from _fixture_phase(item)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_teardown(item, nextitem):
+    yield from _fixture_phase(item)
+
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item, nextitem):
@@ -177,7 +238,16 @@ def pytest_unconfigure(config):
     out = config.getoption("--cov-out")
     with rec.orig_open(out, "wb") as fh:
         pickle.dump(
-            {"files": rec.files, "per_test": rec.per_test, "opens": rec.opens}, fh, protocol=4
+            {
+                "files": rec.files,
+                "per_test": rec.per_test,
+                "opens": rec.opens,
+                "fixture_lines": rec.fixture_lines,
+                "collect_lines": rec.collect_lines,
+                "collect_opens": rec.collect_opens,
+            },
+            fh,
+            protocol=4,
         )
     shutil.rmtree(rec.child_dir, ignore_errors=True)
     _recorder = None

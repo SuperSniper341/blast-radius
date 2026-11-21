@@ -19,6 +19,7 @@ class Maps:
         self.pkg_users: dict[str, int] = payload["pkg_users"]
         self.file_bits: dict[str, int] = payload.get("file_bits", {})
         self.names: dict[str, int] = payload.get("names", {})
+        self.rev_users: dict[str, int] = payload.get("rev_users", {})
         self.fixtures: dict[str, int] = payload.get("fixtures", {})
         self.full: int = (1 << len(self.tests)) - 1
 
@@ -45,7 +46,7 @@ class Maps:
             mask |= table.get(line, 0)
         return mask
 
-    def module_bits(self, path: str, wide: bool = False) -> int:
+    def module_bits(self, path: str, wide: bool = False, broken: bool = False) -> int:
         """Users of a file whose module-level code changed.
 
         Line coverage cannot see a class attribute that other code reads, so
@@ -55,6 +56,10 @@ class Maps:
         mask = self.pkg_users.get(path, 0) | self.opens.get(path, 0)
         stem = path.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
         mask |= self.fixtures.get(stem, 0)
+        if broken:
+            # Syntax error, deletion or rename: every module that imports this
+            # file fails to import too, so their tests go with it.
+            mask |= self.rev_users.get(path, 0)
         if wide:
             mask |= self.imports.get(path, 0)
         if not mask:
@@ -104,11 +109,13 @@ def change_bits(change: Change, maps: Maps, wide_imports: bool = False) -> int:
 
     if kind == "py_src":
         if change.deleted_file:
-            return maps.full
+            return maps.module_bits(path, wide=wide_imports, broken=True) or maps.full
         if not change.token_changed:
             return maps.opens.get(path, 0)
         if change.module_level:
-            return maps.module_bits(path, wide=wide_imports)
+            return maps.module_bits(
+                path, wide=wide_imports, broken=change.syntax_error or change.new_file
+            )
         lines = change.changed_lines
         if change.span is not None:
             lines = set(range(change.span[0], change.span[1] + 1))
@@ -116,8 +123,16 @@ def change_bits(change: Change, maps: Maps, wide_imports: bool = False) -> int:
         return mask or maps.module_bits(path, wide=wide_imports)
 
     if kind == "py_test":
-        if change.module_level or change.deleted_file:
-            return maps.file_bits.get(path, maps.full)
+        if change.deleted_file:
+            return maps.rev_users.get(path, 0) or maps.full
+        if change.module_level:
+            # A test module's module-level code is imported by other test
+            # files (tests.dialects.test_dialect.Validator is the big one).
+            return (
+                maps.file_bits.get(path, 0)
+                | maps.rev_users.get(path, 0)
+                | (maps.full if change.syntax_error else 0)
+            ) or maps.file_bits.get(path, maps.full)
         mask = maps.line_bits(path, change.changed_lines) | maps.file_bits.get(path, 0)
         if change.text is not None:
             mask |= _test_method_bits(path, change.changed_lines, change.text, maps)
