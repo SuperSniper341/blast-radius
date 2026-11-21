@@ -9,6 +9,7 @@ import pickle
 from .classify import Change
 
 
+
 class Maps:
     def __init__(self, payload: dict):
         self.tests: list[str] = payload["tests"]

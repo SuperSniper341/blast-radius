@@ -22,7 +22,6 @@ def main() -> None:
     tests = json.loads((data / "tests.json").read_text())["tests"]
     answers = json.loads((data / "answers.json").read_text())["commits"]
     by_number = {t["number"]: t for t in tests}
-    wide = os.environ.get("WIDE_IMPORTS", "0") == "1"
 
     for patch in sorted((data / "commits").glob("*.patch")):
         commit = patch.stem
@@ -42,14 +41,14 @@ def main() -> None:
             except diff.PatchError:
                 new = None
             changes.append(classify.classify(fp, old, new))
-        selected = select(changes, maps, wide_imports=wide)
+        selected = select(changes, maps)
         failing = answers[commit]["failing"]
         missed = [n for n in failing if by_number[n]["id"] not in selected]
         if not missed:
             continue
         print(f"=== {commit} ({answers[commit]['kind']}) missed {len(missed)}/{len(failing)}")
         for change in changes:
-            bits = change_bits(change, maps, wide_imports=wide)
+            bits = change_bits(change, maps)
             n = bin(bits).count("1")
             print(
                 f"  change {change.path} kind={change.kind} tok={change.token_changed} "
