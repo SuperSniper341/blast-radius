@@ -15,10 +15,8 @@ class Maps:
         self.index: dict[str, int] = {name: i for i, name in enumerate(self.tests)}
         self.cov: dict[str, dict[int, int]] = payload["cov"]
         self.opens: dict[str, int] = payload["opens"]
-        self.imports: dict[str, int] = payload["imports"]
         self.pkg_users: dict[str, int] = payload["pkg_users"]
         self.file_bits: dict[str, int] = payload.get("file_bits", {})
-        self.names: dict[str, int] = payload.get("names", {})
         self.rev_users: dict[str, int] = payload.get("rev_users", {})
         self.fixtures: dict[str, int] = payload.get("fixtures", {})
         self.full: int = (1 << len(self.tests)) - 1
@@ -46,7 +44,25 @@ class Maps:
             mask |= table.get(line, 0)
         return mask
 
-    def module_bits(self, path: str, wide: bool = False, broken: bool = False) -> int:
+    def dialect_family(self, path: str, stem: str) -> int:
+        """Tests that drive one dialect without running a line of its own file.
+
+        A dialect's class attributes are read by shared code (``test_between``
+        walks every dialect's generator), so a flag change shows up in
+        ``test_dialect`` and in the dialect's own test module, whatever lines
+        the dialect file itself ever executes.
+        """
+        if stem in ("dialect", "generator", "parser", "typing", "__init__"):
+            return 0
+        if not path.startswith(
+            ("sqlglot/dialects/", "sqlglot/generators/", "sqlglot/parsers/", "sqlglot/typing/")
+        ):
+            return 0
+        return self.file_bits.get(
+            f"tests/dialects/test_{stem}.py", 0
+        ) | self.file_bits.get("tests/dialects/test_dialect.py", 0)
+
+    def module_bits(self, path: str, broken: bool = False) -> int:
         """Users of a file whose module-level code changed.
 
         Line coverage cannot see a class attribute that other code reads, so
@@ -56,12 +72,11 @@ class Maps:
         mask = self.pkg_users.get(path, 0) | self.opens.get(path, 0)
         stem = path.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
         mask |= self.fixtures.get(stem, 0)
+        mask |= self.dialect_family(path, stem)
         if broken:
             # Syntax error, deletion or rename: every module that imports this
             # file fails to import too, so their tests go with it.
             mask |= self.rev_users.get(path, 0)
-        if wide:
-            mask |= self.imports.get(path, 0)
         if not mask:
             return self.full
         return mask
@@ -100,7 +115,7 @@ def _enclosing_class(tree: ast.AST, target: ast.AST) -> str | None:
     return None
 
 
-def change_bits(change: Change, maps: Maps, wide_imports: bool = False) -> int:
+def change_bits(change: Change, maps: Maps) -> int:
     kind = change.kind
     path = change.path
 
@@ -109,18 +124,16 @@ def change_bits(change: Change, maps: Maps, wide_imports: bool = False) -> int:
 
     if kind == "py_src":
         if change.deleted_file:
-            return maps.module_bits(path, wide=wide_imports, broken=True) or maps.full
-        if not change.token_changed:
+            return maps.module_bits(path, broken=True) or maps.full
+        if change.docstring_only or not change.token_changed:
             return maps.opens.get(path, 0)
         if change.module_level:
-            return maps.module_bits(
-                path, wide=wide_imports, broken=change.syntax_error or change.new_file
-            )
+            return maps.module_bits(path, broken=change.syntax_error or change.new_file)
         lines = change.changed_lines
         if change.span is not None:
             lines = set(range(change.span[0], change.span[1] + 1))
         mask = maps.opens.get(path, 0) | maps.line_bits(path, lines)
-        return mask or maps.module_bits(path, wide=wide_imports)
+        return mask or maps.module_bits(path)
 
     if kind == "py_test":
         if change.deleted_file:
@@ -161,8 +174,8 @@ def change_bits(change: Change, maps: Maps, wide_imports: bool = False) -> int:
     return maps.full
 
 
-def select(changes: list[Change], maps: Maps, wide_imports: bool = False) -> set[str]:
+def select(changes: list[Change], maps: Maps) -> set[str]:
     mask = 0
     for change in changes:
-        mask |= change_bits(change, maps, wide_imports=wide_imports)
+        mask |= change_bits(change, maps)
     return set(maps.ids(mask & maps.full))

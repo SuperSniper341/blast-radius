@@ -58,6 +58,7 @@ class Change:
     names: set[str] = field(default_factory=set)
     span: tuple[int, int] | None = None
     syntax_error: bool = False
+    docstring_only: bool = False
     new_file: bool = False
     deleted_file: bool = False
     text: str | None = None
@@ -156,6 +157,26 @@ def _function_body_lines(source: str) -> tuple[set[int], dict[int, int]] | None:
                 last = max(ends)
                 inside.update(range(first, last + 1))
     return inside, heads
+
+
+def _docstring_lines(source: str) -> set[int]:
+    tree = _parse(source)
+    if tree is None:
+        return set()
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not body or not isinstance(body[0], ast.Expr):
+            continue
+        value = body[0].value
+        if not (isinstance(value, ast.Constant) and isinstance(value.value, str)):
+            continue
+        first = body[0].lineno
+        last = getattr(body[0], "end_lineno", first) or first
+        lines.update(range(first, last + 1))
+    return lines
 
 
 def _removed_and_added(fp: FilePatch) -> tuple[set[int], list[str]]:
@@ -286,6 +307,15 @@ def classify(fp: FilePatch, old_text: str | None, new_text: str | None) -> Chang
 
     if fp.is_new or fp.is_deleted or old_text is None or new_text is None:
         change.module_level = True
+        return change
+
+    docstrings = _docstring_lines(old_text)
+    if change.changed_lines and change.changed_lines <= docstrings:
+        # Nothing in tests.json reads a docstring (the doctest suite collects no
+        # tests), so this can only matter to a test that reads the file.
+        change.docstring_only = True
+        change.token_changed = True
+        change.module_level = False
         return change
 
     parsed = _function_body_lines(old_text)

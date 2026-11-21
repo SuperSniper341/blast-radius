@@ -14,7 +14,6 @@ from .candidates import Maps, select
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 CHECKOUT = Path(os.environ.get("SQLGLOT_DIR", "/app/sqlglot"))
 MAPS_PATH = os.environ.get("MAPS", "/app/maps/maps.pkl.gz")
-WIDE_IMPORTS = os.environ.get("WIDE_IMPORTS", "0") == "1"
 
 
 def log(message: str) -> None:
@@ -72,7 +71,7 @@ def main() -> None:
         try:
             text = patch_path.read_text(encoding="utf-8", errors="surrogateescape")
             changes = changes_for(text, CHECKOUT)
-            selected = select(changes, maps, wide_imports=WIDE_IMPORTS)
+            selected = select(changes, maps)
             numbers = {numbers_by_id[tid] for tid in selected if tid in numbers_by_id}
             numbers.update(unmapped)
             if numbers == all_numbers:

@@ -156,46 +156,6 @@ def build_fixture_map(root: str, cov: dict, opens: dict) -> dict[str, int]:
     return out
 
 
-def build_name_map(root: str) -> dict[str, dict[str, list[int]]]:
-    """name -> file -> lines that reference it (AST names, attributes, defs)."""
-    out: dict[str, dict[str, list[int]]] = {}
-    for base, dirnames, files in os.walk(os.path.join(root, "sqlglot")):
-        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
-        for name in files:
-            if not name.endswith(".py"):
-                continue
-            full = os.path.join(base, name)
-            rel = os.path.relpath(full, root).replace(os.sep, "/")
-            try:
-                with open(full, encoding="utf-8") as fh:
-                    tree = ast.parse(fh.read())
-            except (OSError, SyntaxError, UnicodeDecodeError):
-                continue
-            for node in ast.walk(tree):
-                names: list[str] = []
-                if isinstance(node, ast.Name):
-                    names.append(node.id)
-                elif isinstance(node, ast.Attribute):
-                    names.append(node.attr)
-                elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    names.append(node.name)
-                elif isinstance(node, ast.arg):
-                    names.append(node.arg)
-                elif isinstance(node, ast.keyword) and node.arg:
-                    names.append(node.arg)
-                if not names:
-                    continue
-                first = getattr(node, "lineno", None)
-                if first is None:
-                    continue
-                last = getattr(node, "end_lineno", None) or first
-                span = list(range(first, min(last, first + 400) + 1))
-                for label in names:
-                    entry = out.setdefault(label, {})
-                    entry.setdefault(rel, []).extend(span)
-    return out
-
-
 def bits_of(indices) -> int:
     value = 0
     for i in indices:
@@ -321,34 +281,12 @@ def main() -> None:
         tests_by_file.setdefault(rel, []).append(nodeid)
         file_bits[rel] = file_bits.get(rel, 0) | (1 << index_of[nodeid])
 
-    name_spots = build_name_map(checkout)
-    names: dict[str, int] = {}
-    for label, spots in name_spots.items():
-        mask = 0
-        for rel, line_list in spots.items():
-            table = cov.get(rel)
-            if not table:
-                continue
-            for line in set(line_list):
-                mask |= table.get(line, 0)
-        if mask:
-            names[label] = mask
-
     fixture_bits = build_fixture_map(checkout, cov, opens)
 
     reach = build_import_map(checkout)
-    imports: dict[str, int] = {}
-    for rel, importers in reach.items():
-        mask = 0
-        for importer in importers:
-            for nodeid in tests_by_file.get(importer, ()):
-                mask |= 1 << index_of[nodeid]
-        if mask:
-            imports[rel] = mask
-
     rev_users: dict[str, int] = {}
     for rel, importers in reach.items():
-        mask = pkg_users.get(rel, 0) | imports.get(rel, 0)
+        mask = pkg_users.get(rel, 0) | opens.get(rel, 0)
         for importer in importers:
             mask |= pkg_users.get(importer, 0)
         if mask:
@@ -358,11 +296,9 @@ def main() -> None:
         "tests": tests,
         "cov": cov,
         "opens": opens,
-        "imports": imports,
         "pkg_users": pkg_users,
         "rev_users": rev_users,
         "file_bits": file_bits,
-        "names": names,
         "fixtures": fixture_bits,
     }
     dst = os.path.join(out_dir, "maps.pkl.gz")

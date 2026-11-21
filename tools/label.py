@@ -134,7 +134,7 @@ def main() -> None:
             report = work / "report.xml"
             cmd = [
                 sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
-                "--timeout=150", "--timeout-method=thread", "-o", "addopts=",
+                "--timeout=90", "-o", "addopts=",
                 f"-n{args.workers}", f"--junitxml={report}", "tests",
             ]
             proc = subprocess.run(
