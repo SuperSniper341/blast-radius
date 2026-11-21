@@ -284,6 +284,15 @@ def main() -> None:
     fixture_bits = build_fixture_map(checkout, cov, opens)
 
     reach = build_import_map(checkout)
+    imports: dict[str, int] = {}
+    for rel, importers in reach.items():
+        mask = 0
+        for importer in importers:
+            for nodeid in tests_by_file.get(importer, ()):
+                mask |= 1 << index_of[nodeid]
+        if mask:
+            imports[rel] = mask
+
     rev_users: dict[str, int] = {}
     for rel, importers in reach.items():
         mask = pkg_users.get(rel, 0) | opens.get(rel, 0)
@@ -297,6 +306,7 @@ def main() -> None:
         "cov": cov,
         "opens": opens,
         "pkg_users": pkg_users,
+        "imports": imports,
         "rev_users": rev_users,
         "file_bits": file_bits,
         "fixtures": fixture_bits,

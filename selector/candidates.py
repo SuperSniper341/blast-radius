@@ -17,6 +17,7 @@ class Maps:
         self.cov: dict[str, dict[int, int]] = payload["cov"]
         self.opens: dict[str, int] = payload["opens"]
         self.pkg_users: dict[str, int] = payload["pkg_users"]
+        self.imports: dict[str, int] = payload.get("imports", {})
         self.file_bits: dict[str, int] = payload.get("file_bits", {})
         self.rev_users: dict[str, int] = payload.get("rev_users", {})
         self.fixtures: dict[str, int] = payload.get("fixtures", {})
@@ -84,13 +85,16 @@ class Maps:
         stem = path.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
         mask |= self.fixtures.get(stem, 0)
         mask |= self.dialect_family(path, stem)
-        # Module-level data (a flag, a table) is read by code in other modules:
-        # include everyone who runs a module that imports this one.
-        mask |= self.rev_users.get(path, 0)
         if broken:
-            # Syntax error, deletion or rename: every module that imports this
-            # file fails to import too, so their tests go with it.
-            mask |= self.rev_users.get(path, 0)
+            # The module no longer imports: who fails depends on which test
+            # first imports it, and sqlglot loads dialects by name at run time,
+            # so no static or coverage map answers that. Everything.
+            return self.full
+        else:
+            # Module-level data (a flag, a table) is read by code in other
+            # modules: include everyone who runs a module that imports this one,
+            # and everyone whose test module imports it.
+            mask |= self.rev_users.get(path, 0) | self.imports.get(path, 0)
         if not mask:
             return self.full
         return mask
@@ -138,14 +142,19 @@ def change_bits(change: Change, maps: Maps) -> int:
 
     if kind == "py_src":
         if change.deleted_file:
-            return maps.module_bits(path, broken=True) or maps.full
+            return maps.module_bits(path, broken=True)
+        if change.new_file:
+            # A module nobody imported yet cannot break a test; a patch that
+            # wires it in carries its own (wide) change for the importer.
+            return maps.imports.get(path, 0) | maps.rev_users.get(path, 0)
         if change.docstring_only or not change.token_changed:
             # A comment is inert, but "not promised harmless": keep the tests
             # that run the file, which is what a line-number or doc-string
             # reading test would need. Costs a few seconds, saves a 300 s miss.
-            return maps.opens.get(path, 0) | maps.pkg_users.get(path, 0)
+            mask = maps.opens.get(path, 0) | maps.pkg_users.get(path, 0)
+            return mask or maps.module_bits(path)
         if change.module_level:
-            return maps.module_bits(path, broken=change.syntax_error or change.new_file)
+            return maps.module_bits(path, broken=change.syntax_error)
         lines = change.changed_lines
         if change.span is not None:
             lines = set(range(change.span[0], change.span[1] + 1))
@@ -191,13 +200,8 @@ def change_bits(change: Change, maps: Maps) -> int:
     return maps.full
 
 
-def select(changes: list[Change], maps: Maps, floor_to_all: bool = True) -> set[str]:
+def select(changes: list[Change], maps: Maps) -> set[str]:
     mask = 0
-    touches_src = False
     for change in changes:
         mask |= change_bits(change, maps)
-        if change.path.startswith("sqlglot/"):
-            touches_src = True
-    if floor_to_all and touches_src and not mask:
-        mask = maps.full
     return set(maps.ids(mask & maps.full))

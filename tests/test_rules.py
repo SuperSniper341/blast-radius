@@ -76,7 +76,7 @@ def test_new_conftest_runs_everything(maps, numbers):
     assert len(run(patch, maps, numbers)) == len(numbers)
 
 
-def test_deleted_optimizer_module_pulls_in_its_importers(maps, numbers):
+def test_deleted_module_runs_everything(maps, numbers):
     patch = (
         "diff --git a/sqlglot/optimizer/eliminate_joins.py b/sqlglot/optimizer/eliminate_joins.py\n"
         "deleted file mode 100644\n"
@@ -85,9 +85,10 @@ def test_deleted_optimizer_module_pulls_in_its_importers(maps, numbers):
         "@@ -1 +0,0 @@\n"
         "-import x\n"
     )
-    selected = run(patch, maps, numbers)
-    assert 1106 in selected, "test_execute_tpcds runs the optimizer"
-    assert len(selected) < len(numbers)
+    # sqlglot loads dialects by name at run time, so which tests import a module
+    # is not decidable from the map; a module that stops importing is a miss
+    # waiting to happen.
+    assert len(run(patch, maps, numbers)) == len(numbers)
 
 
 def test_syntax_error_widens_beyond_the_file(maps, numbers):
@@ -114,6 +115,19 @@ def test_new_test_file_runs_nothing(maps, numbers):
         "@@ -0,0 +1,2 @@\n"
         "+import unittest\n"
         "+class T(unittest.TestCase):\n"
+    )
+    assert run(patch, maps, numbers) == set()
+
+
+def test_new_source_file_runs_nothing(maps, numbers):
+    patch = (
+        "diff --git a/sqlglot/dialects/brand_new.py b/sqlglot/dialects/brand_new.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/sqlglot/dialects/brand_new.py\n"
+        "@@ -0,0 +1,2 @@\n"
+        "+from sqlglot.dialects.dialect import Dialect\n"
+        "+class BrandNew(Dialect):\n"
     )
     assert run(patch, maps, numbers) == set()
 
