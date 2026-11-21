@@ -1,0 +1,6 @@
+/work/
+/validation/
+__pycache__/
+*.pyc
+output.jsonl
+/blast-radius-sample.tar.gz
