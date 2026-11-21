@@ -6,7 +6,7 @@ import pytest
 from selector import diff
 
 REPO = Path(__file__).resolve().parents[1]
-SAMPLE = REPO / "kit" / "sample" / "commits"
+SAMPLE = REPO / "sample" / "commits"
 CHECKOUT = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
 
 

@@ -82,7 +82,7 @@ class Recorder:
 
     def install(self):
         mon = sys.monitoring
-        mon.use_tool_id(self._tool, "blast-radius")
+        mon.use_tool_id(self._tool, "sqlglot-selector")
         mon.register_callback(self._tool, mon.events.LINE, self.on_line)
         mon.set_events(self._tool, mon.events.LINE)
 

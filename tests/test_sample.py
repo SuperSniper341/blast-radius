@@ -16,7 +16,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 CHECKOUT = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
 MAPS = REPO / "maps" / "maps.pkl.gz"
-SAMPLE = REPO / "kit" / "sample"
+SAMPLE = REPO / "sample"
 BUDGET_MILLISECONDS = 400_000
 
 pytestmark = pytest.mark.skipif(
@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def load_scorer():
-    spec = importlib.util.spec_from_file_location("kit_score", REPO / "kit" / "score.py")
+    spec = importlib.util.spec_from_file_location("kit_score", REPO / "sample" / "score.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

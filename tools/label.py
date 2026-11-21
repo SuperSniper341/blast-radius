@@ -81,7 +81,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkout", default=os.path.expanduser("~/blast/sqlglot"))
     ap.add_argument("--commits", default="validation/commits")
-    ap.add_argument("--tests", default="kit/sample/tests.json")
+    ap.add_argument("--tests", default="sample/tests.json")
     ap.add_argument("--out", default="validation/answers.json")
     ap.add_argument("-n", "--workers", default="4")
     ap.add_argument("--only", default="")

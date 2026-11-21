@@ -12,7 +12,7 @@ from selector.candidates import Maps, select
 REPO = Path(__file__).resolve().parents[1]
 CHECKOUT = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
 MAPS = REPO / "maps" / "maps.pkl.gz"
-TESTS = REPO / "kit" / "sample" / "tests.json"
+TESTS = REPO / "sample" / "tests.json"
 
 pytestmark = pytest.mark.skipif(
     not (CHECKOUT.exists() and MAPS.exists()), reason="needs the checkout and the map"

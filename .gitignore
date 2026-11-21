@@ -1,5 +1,5 @@
 *.pyc
-/blast-radius-sample.tar.gz
+/*.tar.gz
 /validation*/
 /validation/
 /work/

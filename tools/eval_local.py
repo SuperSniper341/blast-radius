@@ -1,6 +1,6 @@
 """Run the selector locally the way the scorer does and report the total.
 
-    python -m tools.eval_local --data kit/sample --answers kit/sample/answers.json
+    python -m tools.eval_local --data sample --answers sample/answers.json
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def load_scorer():
-    spec = importlib.util.spec_from_file_location("kit_score", REPO / "kit" / "score.py")
+    spec = importlib.util.spec_from_file_location("kit_score", REPO / "sample" / "score.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -27,8 +27,8 @@ def load_scorer():
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="kit/sample")
-    ap.add_argument("--answers", default="kit/sample/answers.json")
+    ap.add_argument("--data", default="sample")
+    ap.add_argument("--answers", default="sample/answers.json")
     ap.add_argument("--checkout", default=os.path.expanduser("~/blast/sqlglot"))
     ap.add_argument("--maps", default=str(REPO / "maps" / "maps.pkl.gz"))
     ap.add_argument("--tests-file", default="")

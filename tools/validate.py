@@ -22,7 +22,7 @@ def main() -> None:
     checkout = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
     answers_path = Path(sys.argv[2]) if len(sys.argv) > 2 else data / "answers.json"
     maps = Maps.load(str(REPO / "maps/maps.pkl.gz"))
-    tests = json.loads((REPO / "kit/sample/tests.json").read_text())["tests"]
+    tests = json.loads((REPO / "sample/tests.json").read_text())["tests"]
     durations = {t["number"]: round(t["seconds"] * 1000) for t in tests}
     number_of = {t["id"]: t["number"] for t in tests}
     answers = json.loads(answers_path.read_text())["commits"]

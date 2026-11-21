@@ -15,7 +15,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
-    data = Path(os.environ.get("DATA_DIR", REPO / "kit/sample"))
+    data = Path(os.environ.get("DATA_DIR", REPO / "sample"))
     answers_path = Path(sys.argv[1]) if len(sys.argv) > 1 else data / "answers.json"
     out = Path(os.environ.get("OUT", REPO / "output.jsonl"))
     tests = json.loads((data / "tests.json").read_text())["tests"]
