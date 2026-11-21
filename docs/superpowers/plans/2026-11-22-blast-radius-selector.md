@@ -27,7 +27,8 @@
 
 ## Known facts (verified 2026-11-22)
 
-- Local machine: Windows + WSL Ubuntu (`wsl -d Ubuntu`), conda at `~/miniforge3`, Python 3.14 default, **no Docker installed**, `make` only inside WSL conda env. sqlglot clone at `~/blast/sqlglot` (WSL), checked out at the pinned commit. sqlglot/ = 3.5 MB, 184 .py files; tests/ = 8.8 MB.
+- Local machine: Windows + WSL Ubuntu (`wsl -d Ubuntu`), conda at `~/miniforge3`, Python 3.14 default, Docker Desktop installed on Windows via winget (enable WSL integration in Docker Desktop settings to use `docker` inside WSL), `make` only inside WSL conda env. sqlglot clone at `~/blast/sqlglot` (WSL), checked out at the pinned commit. sqlglot/ = 3.5 MB, 184 .py files; tests/ = 8.8 MB.
+- Repo: git root `C:/Users/malvi/Desktop/Buildathon`, branch `main`, public remote https://github.com/SuperSniper341/blast-radius (`gh` CLI logged in as SuperSniper341). `.gitattributes` forces LF (patches/maps must be byte-exact).
 - Kit unpacked at `C:/Users/malvi/Desktop/Buildathon/kit/` (Dockerfile, Makefile, score.py, selector.py, requirements.lock, sample/{commits,answers.json,tests.json}).
 - tests.json: 1620 tests, 103.0 s total. Heavy tests: #1490 `test_parser::test_max_nodes` 28.8 s, #1106 `test_executor::test_execute_tpcds` 21.5 s, #1224 `test_generator::test_generator_memory` 6.7 s, #1107 tpch 3.9 s, #1123 optimized_tpch 3.5 s, then optimizer fixture tests 1–2.5 s.
 - Sample: 30 commits; kinds `code`/`fixture`/`comment`/`multi`; 12 break nothing; most break 1 test; `2jrq` and `3utz` break tpcds. Lower bound for the sample ≈ 100 s.
@@ -64,7 +65,7 @@
 
 - [ ] **Step 1:** In WSL: `conda create -y -p ~/blast/py313 python=3.13` then `~/blast/py313/bin/pip install -r /mnt/c/Users/malvi/Desktop/Buildathon/requirements.lock`.
 - [ ] **Step 2:** Baseline the suite: `cd ~/blast/sqlglot && SKIP_INTEGRATION=0 ~/blast/py313/bin/python -m pytest -q -p no:cacheprovider tests` → expect all pass except the 1 skipped id listed in tests.json `skipped`. Record any baseline failures (they would be labeled failing on every commit; there should be none).
-- [ ] **Step 3:** Docker: ask the user to either install Docker Desktop with WSL integration or `sudo apt install docker.io` in WSL (needs their sudo password). Until then, all evaluation goes through `tools/eval_local.py` (Task 7). `git init` the repo root and commit.
+- [ ] **Step 3:** Docker: start Docker Desktop, confirm `docker version` works (Windows shell) — and inside WSL after enabling WSL integration. The kit Makefile needs `make` (use WSL). Until Docker works, all evaluation goes through `tools/eval_local.py` (Task 7). Repo already initialized and pushed.
 
 ### Task 1: Coverage + file-open maps (`tools/covplugin.py`, `tools/build_maps.py`)
 
@@ -168,7 +169,7 @@ Policy per commit (all costs in seconds):
   - `ENV SKIP_INTEGRATION=0 PYTHONDONTWRITEBYTECODE=1 SQLGLOT_DIR=/app/sqlglot`
   - `CMD ["python", "-m", "selector.main"]` with `WORKDIR /app`.
 - [ ] **Step 2:** If Docker is available: `make -C kit sample IMAGE=...` style run using kit's `RUN_FLAGS` against the repo Dockerfile → `misses 0`, total well below 1614.1. Verify the build stays < 10 min (should be ~1 min).
-- [ ] **Step 3:** Push to a public GitHub repo; submit repo + commit hash.
+- [ ] **Step 3:** `git push` to https://github.com/SuperSniper341/blast-radius (public); submit repo URL + commit hash.
 
 ## Review Focus
 
