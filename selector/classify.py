@@ -203,7 +203,17 @@ def classify(fp: FilePatch, old_text: str | None, new_text: str | None) -> Chang
         text=new_text,
     )
 
-    if fp is not None and fp.mode_only and not fp.hunks:
+    if fp.is_binary or (not fp.hunks and not (fp.is_new or fp.is_deleted)):
+        # Nothing we can read: assume it changes behaviour.
+        change.token_changed = True
+        change.module_level = True
+        return change
+
+    if fp.old_path and fp.new_path and fp.old_path != fp.new_path:
+        change.module_level = True
+        return change
+
+    if fp.mode_only and not fp.hunks:
         change.token_changed = False
         change.module_level = False
         change.changed_lines = set()
@@ -217,7 +227,7 @@ def classify(fp: FilePatch, old_text: str | None, new_text: str | None) -> Chang
         change.module_level = False
         return change
 
-    if fp.is_new or fp.is_deleted or old_text is None:
+    if fp.is_new or fp.is_deleted or old_text is None or new_text is None:
         change.module_level = True
         return change
 
