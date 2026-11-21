@@ -5,7 +5,7 @@ from selector import classify, diff
 
 REPO = Path(__file__).resolve().parents[1]
 SAMPLE = REPO / "sample" / "commits"
-CHECKOUT = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
+CHECKOUT = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/sqlglot")))
 
 
 def load(commit: str):

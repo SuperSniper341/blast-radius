@@ -1,6 +1,6 @@
 """Generate synthetic commits (patches against the pinned checkout) for validation.
 
-    python -m tools.mutants --checkout ~/blast/sqlglot --out validation --n 120
+    python -m tools.mutants --checkout ~/sqlglot --out validation --n 120
 
 Only for local use: the labelled output must never be shipped.
 """
@@ -259,7 +259,7 @@ OPS = [
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--checkout", default=os.path.expanduser("~/blast/sqlglot"))
+    ap.add_argument("--checkout", default=os.path.expanduser("~/sqlglot"))
     ap.add_argument("--out", default="validation")
     ap.add_argument("--n", type=int, default=120)
     ap.add_argument("--seed", type=int, default=7)

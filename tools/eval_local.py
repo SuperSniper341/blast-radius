@@ -29,7 +29,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="sample")
     ap.add_argument("--answers", default="sample/answers.json")
-    ap.add_argument("--checkout", default=os.path.expanduser("~/blast/sqlglot"))
+    ap.add_argument("--checkout", default=os.path.expanduser("~/sqlglot"))
     ap.add_argument("--maps", default=str(REPO / "maps" / "maps.pkl.gz"))
     ap.add_argument("--tests-file", default="")
     ap.add_argument("--out", default=str(REPO / "output.jsonl"))

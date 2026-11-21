@@ -1,7 +1,7 @@
 """Coverage recorder for sqlglot's spawned worker processes.
 
-Imported via sitecustomize when ``BLAST_COV_DIR`` is set; the plugin passes the
-owning test's node id in ``BLAST_COV_TEST`` so lines executed in a spawn child
+Imported via sitecustomize when ``COV_DIR`` is set; the plugin passes the
+owning test's node id in ``COV_TEST`` so lines executed in a spawn child
 are attributed to that test.
 """
 
@@ -14,9 +14,9 @@ import pickle
 import sys
 from array import array
 
-DIR = os.environ.get("BLAST_COV_DIR")
-ROOT = os.environ.get("BLAST_COV_ROOT") or os.getcwd()
-NODE = os.environ.get("BLAST_COV_TEST") or ""
+DIR = os.environ.get("COV_DIR")
+ROOT = os.environ.get("COV_ROOT") or os.getcwd()
+NODE = os.environ.get("COV_TEST") or ""
 
 if DIR:
     _root = os.path.abspath(ROOT)
@@ -54,7 +54,7 @@ if DIR:
             return False
         for tool_id in (4, 3, 2, 0):
             try:
-                mon.use_tool_id(tool_id, "blast-child")
+                mon.use_tool_id(tool_id, "cov-child")
             except ValueError:
                 continue
             mon.register_callback(tool_id, mon.events.LINE, _on_line)

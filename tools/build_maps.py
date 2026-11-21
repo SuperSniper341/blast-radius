@@ -1,6 +1,6 @@
 """Build the maps the selector uses, from the pinned sqlglot checkout.
 
-    python -m tools.build_maps --checkout ~/blast/sqlglot --out maps
+    python -m tools.build_maps --checkout ~/sqlglot --out maps
 
 Writes maps/maps.pkl.gz holding:
   tests      : canonical list of node ids (bit index == position)
@@ -223,7 +223,7 @@ def spread_shared_setup(root, files, per_test, opens_raw, fixture_lines, collect
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--checkout", default=os.path.expanduser("~/blast/sqlglot"))
+    ap.add_argument("--checkout", default=os.path.expanduser("~/sqlglot"))
     ap.add_argument("--out", default="maps")
     ap.add_argument("--reuse-raw", default="")
     ap.add_argument("--extra", nargs="*", default=["tests"])

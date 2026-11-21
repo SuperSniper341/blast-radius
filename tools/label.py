@@ -79,7 +79,7 @@ def nodeids_from_junit(path: Path, known_files: set[str]) -> set[str]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--checkout", default=os.path.expanduser("~/blast/sqlglot"))
+    ap.add_argument("--checkout", default=os.path.expanduser("~/sqlglot"))
     ap.add_argument("--commits", default="validation/commits")
     ap.add_argument("--tests", default="sample/tests.json")
     ap.add_argument("--out", default="validation/answers.json")

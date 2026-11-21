@@ -10,7 +10,7 @@ from selector import classify, diff
 from selector.candidates import Maps, select
 
 REPO = Path(__file__).resolve().parents[1]
-CHECKOUT = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
+CHECKOUT = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/sqlglot")))
 MAPS = REPO / "maps" / "maps.pkl.gz"
 TESTS = REPO / "sample" / "tests.json"
 

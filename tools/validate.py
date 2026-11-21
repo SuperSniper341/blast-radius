@@ -19,7 +19,7 @@ MISS_COST = 300_000
 
 def main() -> None:
     data = Path(sys.argv[1] if len(sys.argv) > 1 else REPO / "validation")
-    checkout = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
+    checkout = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/sqlglot")))
     answers_path = Path(sys.argv[2]) if len(sys.argv) > 2 else data / "answers.json"
     maps = Maps.load(str(REPO / "maps/maps.pkl.gz"))
     tests = json.loads((REPO / "sample/tests.json").read_text())["tests"]

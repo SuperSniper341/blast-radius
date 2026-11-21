@@ -47,9 +47,9 @@ class Recorder:
         self.orig_open = builtins.open
         self.orig_io_open = io.open
         self._tool = sys.monitoring.COVERAGE_ID
-        self.child_dir = tempfile.mkdtemp(prefix="blastcov_")
-        os.environ["BLAST_COV_DIR"] = self.child_dir
-        os.environ["BLAST_COV_ROOT"] = self.root
+        self.child_dir = tempfile.mkdtemp(prefix="cov_")
+        os.environ["COV_DIR"] = self.child_dir
+        os.environ["COV_ROOT"] = self.root
 
     # -- path handling -------------------------------------------------
     def rel(self, path: str) -> str | None:
@@ -112,7 +112,7 @@ class Recorder:
         mon.free_tool_id(self._tool)
 
     def start(self, nodeid: str):
-        os.environ["BLAST_COV_TEST"] = nodeid
+        os.environ["COV_TEST"] = nodeid
         self.cur = set()
         self.cur_opens = set()
         self.cur_node = nodeid

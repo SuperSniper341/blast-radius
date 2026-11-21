@@ -17,7 +17,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 def main() -> None:
     data = Path(os.environ.get("DATA_DIR", REPO / "sample"))
-    checkout = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/blast/sqlglot")))
+    checkout = Path(os.path.expanduser(os.environ.get("SQLGLOT_DIR", "~/sqlglot")))
     maps = Maps.load(str(REPO / "maps/maps.pkl.gz"))
     tests = json.loads((data / "tests.json").read_text())["tests"]
     answers = json.loads((data / "answers.json").read_text())["commits"]
