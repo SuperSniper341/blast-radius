@@ -1,0 +1,12 @@
+diff --git a/tests/fixtures/optimizer/annotate_functions.sql b/tests/fixtures/optimizer/annotate_functions.sql
+--- a/tests/fixtures/optimizer/annotate_functions.sql
++++ b/tests/fixtures/optimizer/annotate_functions.sql
+@@ -137,7 +137,7 @@
+ JUSTIFY_HOURS(INTERVAL '1' HOUR);
+ INTERVAL;
+ 
+-JUSTIFY_INTERVAL(INTERVAL '1' HOUR);
++JUSTIFY_INTERVAL(INTERVAL '1' HOUR) ;
+ INTERVAL;
+ 
+ UNIX_MICROS(CAST('2008-12-25 15:30:00+00' AS TIMESTAMP));

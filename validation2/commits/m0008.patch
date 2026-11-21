@@ -1,0 +1,12 @@
+diff --git a/sqlglot/expressions/string.py b/sqlglot/expressions/string.py
+--- a/sqlglot/expressions/string.py
++++ b/sqlglot/expressions/string.py
+@@ -188,7 +188,7 @@
+     arg_types = {
+         "this": True,
+         "delimiter": False,
+-        "part_index": False,
++        "part_index": True,
+     }
+ 
+ 

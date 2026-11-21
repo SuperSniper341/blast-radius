@@ -1,0 +1,10 @@
+diff --git a/sqlglot/dialects/solr.py b/sqlglot/dialects/solr.py
+--- a/sqlglot/dialects/solr.py
++++ b/sqlglot/dialects/solr.py
+@@ -16,5 +16,5 @@
+     Parser = SolrParser
+ 
+     class Tokenizer(tokens.Tokenizer):
+-        QUOTES = ["'"]
++        QUOTES = ["'Z"]
+         IDENTIFIERS = ["`"]

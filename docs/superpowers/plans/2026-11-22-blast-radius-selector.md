@@ -217,6 +217,27 @@ Policy per commit (all costs in seconds):
 8. A function-body change whose span no test executes used to return nothing; it now falls back
    to the file's users.
 
+## Board feedback (practice submission `491203d`)
+
+`793.8 s`, **2 commits missed** out of ~45. Decomposition: 192.8 s of selection + 600 s of
+penalties. Two lessons drove the next revision:
+
+1. Selection was already cheap; the misses dominated. Widening is worth 300 s a miss.
+2. Two classes cannot be derived from line coverage, and both were under-selected:
+   - a module that stops importing (syntax error, deletion, rename) fails tests that first
+     import it *at run time* — sqlglot loads dialects by name, so neither the static import
+     graph nor coverage finds them;
+   - module-level data (a dialect flag, a table) is read by other modules' code and by tests
+     that never run a line of the changed file.
+
+Revision `978d781`: broken modules select everything, new modules select nothing, module-level
+changes add users of importing modules plus the whole dialect test family, and comment-only
+edits keep the tests that run the file. Sample cost 184.8 → 323.5 s, still 0 misses.
+
+Validation corpus after the revision: **0 misses over 35 labelled mutants** (7 kinds), and
+ablations on that corpus show the dialect-family widening is load-bearing (removing it misses 3
+mutants) while dropping `rev_users` saves 3.6 s of 358.8 — kept for safety.
+
 ## Progress log
 
 - Maps: `maps/maps.pkl.gz` (0.8 MB, 1621 ids incl. the skipped one, all 1620 tests.json ids present).

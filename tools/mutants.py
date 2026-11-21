@@ -224,7 +224,37 @@ def op_class_body(root: Path, rng: random.Random) -> tuple[str, str] | None:
     return None
 
 
-OPS = [op_code, op_comment, op_string, op_fixture, op_test, op_class_body, op_new_file]
+def op_reflow(root: Path, rng: random.Random) -> tuple[str, str] | None:
+    """Split a call across two lines: same tokens, different line numbers."""
+    files = list(iter_sources(root, "sqlglot"))
+    for _ in range(20):
+        path = rng.choice(files)
+        rel = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8", errors="surrogateescape")
+        lines = text.splitlines(keepends=True)
+        idx = pick_line(
+            lines,
+            rng,
+            lambda s: s.rstrip().endswith(")") and s.count(",") >= 2 and len(s) > 40,
+        )
+        if idx is None:
+            continue
+        line = lines[idx]
+        cut = line.find("(", line.find("(") + 1)
+        if cut < 0:
+            continue
+        indent = line[: len(line) - len(line.lstrip())] + "    "
+        head, tail = line[: cut + 1], line[cut + 1 :]
+        lines[idx] = f"{head}\n{indent}{tail}"
+        patch = make_patch(root, rel, text, "".join(lines))
+        if patch:
+            return "reflow", patch
+    return None
+
+
+OPS = [
+    op_code, op_comment, op_string, op_fixture, op_test, op_class_body, op_new_file, op_reflow,
+]
 
 
 def main() -> None:

@@ -1,0 +1,12 @@
+diff --git a/tests/test_dialect_imports.py b/tests/test_dialect_imports.py
+--- a/tests/test_dialect_imports.py
++++ b/tests/test_dialect_imports.py
+@@ -12,7 +12,7 @@
+         from sqlglot.dialects import Athena
+ 
+         self.assertTrue(hasattr(Athena, "Parser"))
+-        self.assertTrue(hasattr(Athena, "Generator"))
++        self.assertFalse(hasattr(Athena, "Generator"))
+ 
+     def test_dialect_attribute_access_is_cached(self):
+         """Repeated class-name lookups on the package must not re-import."""

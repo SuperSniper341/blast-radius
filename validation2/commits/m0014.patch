@@ -1,0 +1,7 @@
+diff --git a/sqlglot/_scratch_130408.py b/sqlglot/_scratch_130408.py
+new file mode 100644
+--- /dev/null
++++ b/sqlglot/_scratch_130408.py
+@@ -0,0 +1,2 @@
++def helper(x):
++    return x
