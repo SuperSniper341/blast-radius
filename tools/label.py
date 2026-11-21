@@ -85,6 +85,7 @@ def main() -> None:
     ap.add_argument("--out", default="validation/answers.json")
     ap.add_argument("-n", "--workers", default="4")
     ap.add_argument("--only", default="")
+    ap.add_argument("--kinds", default="", help="comma separated mutant kinds to label")
     ap.add_argument("--relabel", action="store_true")
     args = ap.parse_args()
 
@@ -100,8 +101,13 @@ def main() -> None:
         answers = json.loads(out_path.read_text()).get("commits", {})
 
     patches = sorted(Path(args.commits).glob("*.patch"))
-    if args.only:
-        wanted = set(args.only.split(","))
+    wanted: set[str] = set(args.only.split(",")) if args.only else set()
+    if args.kinds:
+        kinds_path = Path(args.commits).parent / "kinds.json"
+        kinds = json.loads(kinds_path.read_text())
+        for kind in args.kinds.split(","):
+            wanted.update(kinds.get(kind, ()))
+    if wanted:
         patches = [p for p in patches if p.stem in wanted]
 
     work = Path(tempfile.mkdtemp(prefix="lbl_"))

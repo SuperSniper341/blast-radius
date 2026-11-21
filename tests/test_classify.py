@@ -80,3 +80,80 @@ def test_literal_inside_string_counts_as_change():
     (file_patch,) = diff.parse_patch(text)
     change = classify.classify(file_patch, old, new)
     assert change.token_changed is True
+
+
+def _one(patch_text: str, old: str | None):
+    (file_patch,) = diff.parse_patch(patch_text)
+    new = None if file_patch.is_deleted else diff.apply_patch(old, file_patch)
+    return classify.classify(file_patch, old, new)
+
+
+LAMBDA_OLD = 'FUNCS = {\n    "A": lambda args: exp.Foo(this=seq_get(args, 0)),\n}\n'
+
+
+def test_lambda_body_change_is_a_body_change():
+    text = (
+        "diff --git a/sqlglot/p.py b/sqlglot/p.py\n"
+        "--- a/sqlglot/p.py\n"
+        "+++ b/sqlglot/p.py\n"
+        "@@ -1,3 +1,3 @@\n"
+        " FUNCS = {\n"
+        "-    \"A\": lambda args: exp.Foo(this=seq_get(args, 0)),\n"
+        "+    \"A\": lambda args: exp.Foo(this=seq_get(args, 1)),\n"
+        " }\n"
+    )
+    change = _one(text, LAMBDA_OLD)
+    assert change.module_level is False
+    assert change.token_changed is True
+
+
+def test_lambda_header_change_is_module_level():
+    text = (
+        "diff --git a/sqlglot/p.py b/sqlglot/p.py\n"
+        "--- a/sqlglot/p.py\n"
+        "+++ b/sqlglot/p.py\n"
+        "@@ -1,3 +1,3 @@\n"
+        " FUNCS = {\n"
+        "-    \"A\": lambda args: exp.Foo(this=seq_get(args, 0)),\n"
+        "+    \"B\": lambda args: exp.Foo(this=seq_get(args, 0)),\n"
+        " }\n"
+    )
+    change = _one(text, LAMBDA_OLD)
+    assert change.module_level is True
+
+
+def test_syntax_error_is_module_level():
+    text = (
+        "diff --git a/sqlglot/p.py b/sqlglot/p.py\n"
+        "--- a/sqlglot/p.py\n"
+        "+++ b/sqlglot/p.py\n"
+        "@@ -1,2 +1,2 @@\n"
+        " def f():\n"
+        "-    return 1\n"
+        "+    return (1\n"
+    )
+    change = _one(text, "def f():\n    return 1\n")
+    assert change.syntax_error is True
+    assert change.module_level is True
+
+
+def test_mode_only_change_is_not_a_token_change():
+    text = (
+        "diff --git a/sqlglot/p.py b/sqlglot/p.py\n"
+        "old mode 100644\n"
+        "new mode 100755\n"
+    )
+    change = _one(text, "x = 1\n")
+    assert change.token_changed is False
+    assert change.module_level is False
+
+
+def test_rename_is_module_level():
+    text = (
+        "diff --git a/sqlglot/old.py b/sqlglot/new.py\n"
+        "similarity index 100%\n"
+        "rename from sqlglot/old.py\n"
+        "rename to sqlglot/new.py\n"
+    )
+    change = _one(text, "x = 1\n")
+    assert change.module_level is True
