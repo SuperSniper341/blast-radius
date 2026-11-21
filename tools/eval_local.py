@@ -34,6 +34,7 @@ def main() -> int:
     ap.add_argument("--tests-file", default="")
     ap.add_argument("--out", default=str(REPO / "output.jsonl"))
     ap.add_argument("--env", action="append", default=[])
+    ap.add_argument("--compact", action="store_true")
     args = ap.parse_args()
 
     data = Path(args.data).resolve()
@@ -74,6 +75,14 @@ def main() -> int:
 
     simulated_ms = result["simulated_milliseconds"]
     total_ms = simulated_ms + round(cpu * 1000)
+    if args.compact:
+        print(
+            f"simulated={simulated_ms / 1000:.1f} "
+            f"cpu={cpu:.2f} misses={len(result['missed_commits'])} "
+            f"{result['missed_commits']}"
+        )
+        return 0
+
     print(
         json.dumps(
             {

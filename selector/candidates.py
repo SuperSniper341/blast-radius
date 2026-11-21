@@ -59,9 +59,19 @@ class Maps:
             ("sqlglot/dialects/", "sqlglot/generators/", "sqlglot/parsers/", "sqlglot/typing/")
         ):
             return 0
-        return self.file_bits.get(
+        mask = self.file_bits.get(
             f"tests/dialects/test_{stem}.py", 0
-        ) | self.file_bits.get("tests/dialects/test_dialect.py", 0)
+        ) | self.file_bits.get("tests/dialect.py", 0)
+        mask |= self.file_bits.get("tests/dialects/test_dialect.py", 0)
+        # A dialect flag can surface in any dialect test, including ones for a
+        # dialect that inherits the attribute, so take the whole family.
+        for rel, bits in self.file_bits.items():
+            if rel.startswith("tests/dialects/") or rel in (
+                "tests/test_optimizer.py",
+                "tests/test_transpile.py",
+            ):
+                mask |= bits
+        return mask
 
     def module_bits(self, path: str, broken: bool = False) -> int:
         """Users of a file whose module-level code changed.
@@ -74,6 +84,9 @@ class Maps:
         stem = path.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
         mask |= self.fixtures.get(stem, 0)
         mask |= self.dialect_family(path, stem)
+        # Module-level data (a flag, a table) is read by code in other modules:
+        # include everyone who runs a module that imports this one.
+        mask |= self.rev_users.get(path, 0)
         if broken:
             # Syntax error, deletion or rename: every module that imports this
             # file fails to import too, so their tests go with it.
@@ -127,7 +140,10 @@ def change_bits(change: Change, maps: Maps) -> int:
         if change.deleted_file:
             return maps.module_bits(path, broken=True) or maps.full
         if change.docstring_only or not change.token_changed:
-            return maps.opens.get(path, 0)
+            # A comment is inert, but "not promised harmless": keep the tests
+            # that run the file, which is what a line-number or doc-string
+            # reading test would need. Costs a few seconds, saves a 300 s miss.
+            return maps.opens.get(path, 0) | maps.pkg_users.get(path, 0)
         if change.module_level:
             return maps.module_bits(path, broken=change.syntax_error or change.new_file)
         lines = change.changed_lines
@@ -175,8 +191,13 @@ def change_bits(change: Change, maps: Maps) -> int:
     return maps.full
 
 
-def select(changes: list[Change], maps: Maps) -> set[str]:
+def select(changes: list[Change], maps: Maps, floor_to_all: bool = True) -> set[str]:
     mask = 0
+    touches_src = False
     for change in changes:
         mask |= change_bits(change, maps)
+        if change.path.startswith("sqlglot/"):
+            touches_src = True
+    if floor_to_all and touches_src and not mask:
+        mask = maps.full
     return set(maps.ids(mask & maps.full))
