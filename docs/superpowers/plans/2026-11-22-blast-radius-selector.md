@@ -194,7 +194,11 @@ Policy per commit (all costs in seconds):
 - **Fixtures**: `maps.fixtures` maps a module stem (`tsql`, `simplify`, ...) to the tests that
   open a fixture mentioning it, which is what catches a dialect flag change breaking a
   fixture-driven optimizer test.
-- Best local totals: sample 1 749.6 s with 5 misses before the inline-pool fix (see below).
+- Best local totals: sample **184.8 s simulated + ~0.9 s CPU, 0 misses** (baseline 1 614.1 s).
+  Journey: 1 210 s (run everything) → 1 749 s / 5 misses (first map) → 516 s / 1 miss (spawn
+  workers traced) → 217 s / 0 misses (span widening) → 180.7 s (fixture map, no names map) →
+  184.8 s (dialect family, docstring rule) — the last step trades 4 s for the `risingwave`
+  class-attribute miss the validation corpus found.
 
 ## Review findings (fixed after the first working version)
 
@@ -218,5 +222,6 @@ Policy per commit (all costs in seconds):
 - Maps: `maps/maps.pkl.gz` (0.8 MB, 1621 ids incl. the skipped one, all 1620 tests.json ids present).
 - Unit tests: `tests/test_diff.py`, `tests/test_classify.py`, `tests/test_pack.py` pass.
 - Local harness: `python -m tools.eval_local` (CPU from `getrusage(CHILDREN)`, score from `kit/score.py`).
-- Validation corpus: `python -m tools.mutants --n 96`, labelled by `python -m tools.label -n 6`
-  under `validation/` (gitignored).
+- Validation corpus: `python -m tools.mutants --n 96`, labelled by `python -m tools.label`
+  under `validation/` (gitignored). Labelling a mutant costs ~1-5 min (full suite), so the corpus
+  is labelled in priority batches: `--per-kind 5` stratifies across the seven mutant kinds.

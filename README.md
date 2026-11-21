@@ -28,8 +28,8 @@ file lookups.
 3. **Pack** the selected tests over 1..8 workers, cheapest `max load + 2 s per worker`
    (`selector/pack.py`).
 
-Measured on the 30 sample commits: **180.7 s, 0 misses** (baseline: 1 614.1 s), about 0.6 s
-of CPU for the batch.
+Measured on the 30 sample commits: **184.8 s simulated, 0 misses** (baseline: 1 614.1 s),
+plus about 0.9 s of CPU for the whole batch — the image itself runs no tests.
 
 ## Rebuilding the map
 
@@ -60,7 +60,7 @@ python -m tools.ablate                # candidate-rule variants on a labelled se
 | path | role |
 | --- | --- |
 | `selector/` | the shipped program (stdlib only) |
-| `maps/maps.pkl.gz` | the committed map (0.8 MB) |
+| `maps/maps.pkl.gz` | the committed map (0.47 MB) |
 | `tools/` | map building, local scoring, validation corpus |
 | `kit/` | starter kit (scorer, sample commits) |
 | `tests/` | unit tests for the diff parser, classifier and packer |
