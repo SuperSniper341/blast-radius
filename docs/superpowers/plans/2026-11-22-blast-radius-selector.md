@@ -196,6 +196,23 @@ Policy per commit (all costs in seconds):
   fixture-driven optimizer test.
 - Best local totals: sample 1 749.6 s with 5 misses before the inline-pool fix (see below).
 
+## Review findings (fixed after the first working version)
+
+1. `mode_only` never ran: the "no hunks" guard came first. Reordered.
+2. A patch that no longer compiles is now detected with `compile()` and widens to
+   `rev_users` (every module that imports the file), because an import error fails all of them.
+3. Deletions and renames widen the same way instead of returning the whole suite.
+4. `setUpClass`/`tearDownClass` lines ran inside one test only: the plugin now records
+   setup/teardown-only lines per test and the map builder spreads them over the class.
+5. Collection-time code in test modules was attributed to nobody: recorded per test module and
+   added to every test of that file, keeping only lines inside a function body.
+6. Test files import each other (`tests.dialects.test_dialect.Validator`, 33 files): the import
+   map now follows `tests.*` too, and a test module's module-level change widens to importers.
+7. Lambda header lines counted as function bodies, so editing a dict key that happens to hold a
+   lambda looked like a body edit; the header is now a body line only when its prefix is unchanged.
+8. A function-body change whose span no test executes used to return nothing; it now falls back
+   to the file's users.
+
 ## Progress log
 
 - Maps: `maps/maps.pkl.gz` (0.8 MB, 1621 ids incl. the skipped one, all 1620 tests.json ids present).
