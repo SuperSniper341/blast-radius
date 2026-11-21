@@ -50,6 +50,10 @@ def change_mask(change, maps, opts) -> int:
             )
         if change.module_level:
             mask = maps.pkg_users.get(path, 0) | maps.opens.get(path, 0)
+            if opts.get("module") == "class" and getattr(change, "class_names", None):
+                mask = maps.opens.get(path, 0)
+                for name in change.class_names:
+                    mask |= maps.names.get(name, 0)
             if opts["names"]:
                 for name in change.names:
                     mask |= maps.names.get(name, 0)
@@ -129,19 +133,23 @@ def main() -> None:
     changes = load_changes(data, checkout)
 
     results = []
-    grid = product(
-        ["narrow", "always", "shortcircuit"],
-        [True, False],
-        [True, False],
-        [True, False],
+    grid = list(
+        product(
+            ["always"],
+            [True, False],
+            [True],
+            [False, True],
+            ["users", "class"],
+        )
     )
-    for span, names, fixtures, comment_wide in grid:
+    for span, names, fixtures, comment_wide, module in grid:
         opts = {
             "span": span,
             "names": names,
             "fixtures": fixtures,
             "class_only": False,
             "comment_wide": comment_wide,
+            "module": module,
         }
         total = 0
         misses = 0

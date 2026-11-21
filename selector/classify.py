@@ -100,6 +100,24 @@ def token_equivalent(old: str | None, new: str | None) -> bool:
     return a == b
 
 
+_TREE_CACHE: dict[int, ast.Module] = {}
+
+
+def _parse(source: str) -> ast.Module | None:
+    """Parse once per distinct source text: a batch edits the same files repeatedly."""
+    key = hash(source)
+    cached = _TREE_CACHE.get(key)
+    if cached is not None:
+        return cached
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+    if len(_TREE_CACHE) < 256:
+        _TREE_CACHE[key] = tree
+    return tree
+
+
 def _function_body_lines(source: str) -> tuple[set[int], dict[int, int]] | None:
     """Lines strictly inside a function body (not decorators/signature).
 
@@ -107,9 +125,8 @@ def _function_body_lines(source: str) -> tuple[set[int], dict[int, int]] | None:
     starting there): the text before the lambda on that line runs at definition
     time, so editing it is not a function-body edit.
     """
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
+    tree = _parse(source)
+    if tree is None:
         return None
     inside: set[int] = set()
     heads: dict[int, int] = {}
@@ -179,9 +196,8 @@ def _enclosing_span(source: str, lines: set[int]) -> tuple[int, int] | None:
     before (short-circuit change), so every line of the enclosing function is
     a candidate line, not only the edited one.
     """
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
+    tree = _parse(source)
+    if tree is None:
         return None
     best: tuple[int, int] | None = None
     for node in ast.walk(tree):
@@ -208,9 +224,8 @@ def _enclosing_span(source: str, lines: set[int]) -> tuple[int, int] | None:
 
 
 def _enclosing_class(source: str, lines: set[int]) -> set[str]:
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
+    tree = _parse(source)
+    if tree is None:
         return set()
     out = set()
     for node in ast.walk(tree):

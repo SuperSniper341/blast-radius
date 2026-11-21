@@ -86,6 +86,7 @@ def main() -> None:
     ap.add_argument("-n", "--workers", default="4")
     ap.add_argument("--only", default="")
     ap.add_argument("--kinds", default="", help="comma separated mutant kinds to label")
+    ap.add_argument("--per-kind", type=int, default=0, help="label only the first N of each kind")
     ap.add_argument("--relabel", action="store_true")
     args = ap.parse_args()
 
@@ -102,11 +103,15 @@ def main() -> None:
 
     patches = sorted(Path(args.commits).glob("*.patch"))
     wanted: set[str] = set(args.only.split(",")) if args.only else set()
-    if args.kinds:
-        kinds_path = Path(args.commits).parent / "kinds.json"
+    kinds_path = Path(args.commits).parent / "kinds.json"
+    if (args.kinds or args.per_kind) and kinds_path.exists():
         kinds = json.loads(kinds_path.read_text())
-        for kind in args.kinds.split(","):
-            wanted.update(kinds.get(kind, ()))
+        names = args.kinds.split(",") if args.kinds else list(kinds)
+        for kind in names:
+            commits = kinds.get(kind, ())
+            if args.per_kind:
+                commits = commits[: args.per_kind]
+            wanted.update(commits)
     if wanted:
         patches = [p for p in patches if p.stem in wanted]
 
@@ -129,7 +134,7 @@ def main() -> None:
             report = work / "report.xml"
             cmd = [
                 sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
-                "--timeout=25", "--timeout-method=thread", "-o", "addopts=",
+                "--timeout=150", "--timeout-method=thread", "-o", "addopts=",
                 f"-n{args.workers}", f"--junitxml={report}", "tests",
             ]
             proc = subprocess.run(
